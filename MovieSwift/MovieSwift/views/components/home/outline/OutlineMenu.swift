@@ -14,7 +14,8 @@ enum OutlineMenu: Int, CaseIterable, Identifiable {
         return self.rawValue
     }
     
-    case popular, topRated, upcoming, nowPlaying, discover, wishlist, seenlist, myLists
+    
+    case popular, topRated, upcoming, nowPlaying, trending, genres, fanClub, discover, myLists, settings
     
     var title: String {
         switch self {
@@ -22,10 +23,12 @@ enum OutlineMenu: Int, CaseIterable, Identifiable {
         case .topRated:   return "Top rated"
         case .upcoming:   return "Upcoming"
         case .nowPlaying: return "Now Playing"
+        case .trending:   return "Trending"
+        case .genres:     return "Genres"
+        case .fanClub:    return "Fan Club"
         case .discover:   return "Discover"
-        case .wishlist:   return "Wishlist"
-        case .seenlist:   return "Seenlist"
         case .myLists:    return "MyLists"
+        case .settings:   return "Settings"
         }
     }
     
@@ -35,32 +38,32 @@ enum OutlineMenu: Int, CaseIterable, Identifiable {
         case .topRated:   return "star.fill"
         case .upcoming:   return "clock.fill"
         case .nowPlaying: return "play.circle.fill"
+        case .trending:   return "chart.bar.fill"
+        case .genres:     return "tag.fill"
+        case .fanClub:    return "star.circle.fill"
         case .discover:   return "square.stack.fill"
-        case .wishlist:   return "heart.fill"
-        case .seenlist:   return "eye.fill"
         case .myLists:    return "text.badge.plus"
+        case .settings:   return "wrench"
         }
+    }
+    
+    private func moviesList(menu: MoviesMenu) -> AnyView {
+        AnyView( NavigationView{ MoviesHomeList(menu: .constant(menu),
+                                                pageListener: MoviesMenuListPageListener(menu: menu)) })
     }
     
     var contentView: AnyView {
         switch self {
-        case .popular:
-            return AnyView (
-                NavigationView{ PopularList()
-                    .navigationBarItems(trailing:
-                        PresentationLink(destination: SettingsForm()) {
-                            Image(systemName: "wrench")
-                        }
-                    )
-                }
-            )
-        case .topRated:   return AnyView( NavigationView{ TopRatedList() })
-        case .upcoming:   return AnyView( NavigationView{ UpcomingList() })
-        case .nowPlaying: return AnyView( NavigationView{ NowPlayingList() })
+        case .popular:    return moviesList(menu: .popular)
+        case .topRated:   return moviesList(menu: .topRated)
+        case .upcoming:   return moviesList(menu: .upcoming)
+        case .nowPlaying: return moviesList(menu: .nowPlaying)
+        case .trending:   return moviesList(menu: .trending)
+        case .genres:     return AnyView( NavigationView { GenresList() })
+        case .fanClub:    return AnyView( FanClubHome() )
         case .discover:   return AnyView( DiscoverView() )
-        case .wishlist:   return AnyView( MyLists() )
-        case .seenlist:   return AnyView( MyLists() )
         case .myLists:    return AnyView( MyLists() )
+        case .settings:   return AnyView( SettingsForm() )
         }
     }
 }

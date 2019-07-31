@@ -12,38 +12,19 @@ import SwiftUIFlux
 func moviesStateReducer(state: MoviesState, action: Action) -> MoviesState {
     var state = state
     switch action {
-    case let action as MoviesActions.SetPopular:
+    case let action as MoviesActions.SetMovieMenuList:
         if action.page == 1 {
-            state.popular = action.response.results.map{ $0.id }
+            state.moviesList[action.list] = action.response.results.map{ $0.id }
         } else {
-            state.popular.append(contentsOf: action.response.results.map{ $0.id })
+            if var list = state.moviesList[action.list] {
+                list.append(contentsOf: action.response.results.map{ $0.id })
+                state.moviesList[action.list] = list
+            } else {
+                state.moviesList[action.list] = action.response.results.map{ $0.id }
+            }
         }
-        state = mergeMovies(movies: action.response.results, state: state)
-        
-    case let action as MoviesActions.SetTopRated:
-        if action.page == 1 {
-            state.topRated = action.response.results.map{ $0.id }
-        } else {
-            state.topRated.append(contentsOf: action.response.results.map{ $0.id })
-        }
-        state = mergeMovies(movies: action.response.results, state: state)
-        
-    case let action as MoviesActions.SetUpcoming:
-        if action.page == 1 {
-            state.upcoming = action.response.results.map{ $0.id }
-        } else {
-            state.upcoming.append(contentsOf: action.response.results.map{ $0.id })
-        }
-        state = mergeMovies(movies: action.response.results, state: state)
-        
-    case let action as MoviesActions.SetNowPlaying:
-        if action.page == 1 {
-            state.nowPlaying = action.response.results.map{ $0.id }
-        } else {
-            state.nowPlaying.append(contentsOf: action.response.results.map{ $0.id })
-        }
-        state = mergeMovies(movies: action.response.results, state: state)
-        
+        state.movies += action.response.results
+
     case let action as MoviesActions.SetDetail:
         state.movies[action.movie] = action.response
         
@@ -68,34 +49,46 @@ func moviesStateReducer(state: MoviesState, action: Action) -> MoviesState {
         
     case let action as MoviesActions.AddToWishlist:
         state.wishlist.insert(action.movie)
+        state.seenlist.remove(action.movie)
         
         var meta = state.moviesUserMeta[action.movie] ?? MovieUserMeta()
-        meta.dateAddedToWishlist = Date()
+        meta.addedToList = Date()
         state.moviesUserMeta[action.movie] = meta
         
     case let action as MoviesActions.RemoveFromWishlist:
         state.wishlist.remove(action.movie)
-        state.moviesUserMeta[action.movie]?.dateAddedToWishlist = nil
         
     case let action as MoviesActions.AddToSeenList:
         state.seenlist.insert(action.movie)
+        state.wishlist.remove(action.movie)
         
         var meta = state.moviesUserMeta[action.movie] ?? MovieUserMeta()
-        meta.dateAddedToSeenList = Date()
+        meta.addedToList = Date()
         state.moviesUserMeta[action.movie] = meta
         
     case let action as MoviesActions.RemoveFromSeenList:
         state.seenlist.remove(action.movie)
-        state.moviesUserMeta[action.movie]?.dateAddedToSeenList = nil
         
     case let action as MoviesActions.AddMovieToCustomList:
-        state.customLists[action.list]?.movies.append(action.movie)
+        state.customLists[action.list]?.movies.insert(action.movie)
+        
+    case let action as MoviesActions.AddMoviesToCustomList:
+        if var list = state.customLists[action.list] {
+            for movie in action.movies {
+                list.movies.insert(movie)
+            }
+            state.customLists[action.list] = list
+        }
         
     case let action as MoviesActions.RemoveMovieFromCustomList:
-        state.customLists[action.list]?.movies.removeAll{ $0 == action.movie }
+        state.customLists[action.list]?.movies.remove(action.movie)
         
     case let action as MoviesActions.SetMovieForGenre:
-        state.withGenre[action.genre.id] = action.response.results.map{ $0.id }
+        if action.page == 1 {
+            state.withGenre[action.genre.id] = action.response.results.map{ $0.id }
+        } else {
+            state.withGenre[action.genre.id]?.append(contentsOf: action.response.results.map{ $0.id })
+        }
         state = mergeMovies(movies: action.response.results, state: state)
         
     case let action as MoviesActions.SetRandomDiscover:
@@ -174,6 +167,12 @@ func moviesStateReducer(state: MoviesState, action: Action) -> MoviesState {
     
     
     return state
+}
+
+func +=(lhs: inout [Int: Movie], rhs: [Movie]) {
+    for movie in rhs {
+        lhs[movie.id] = movie
+    }
 }
 
 private func mergeMovies(movies: [Movie], state: MoviesState) -> MoviesState {

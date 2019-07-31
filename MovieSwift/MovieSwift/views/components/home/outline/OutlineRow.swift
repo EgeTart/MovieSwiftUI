@@ -18,18 +18,18 @@ struct OutlineRow : View {
     
     var body: some View {
         HStack {
-            Image(systemName: item.image)
-                .resizable()
-                .frame(width: 30, height: 30)
-                .aspectRatio(contentMode: .fit)
-                .foregroundColor(isSelected ? .steam_gold : .white)
-                .padding(.trailing, 16)
+            Group {
+                Image(systemName: item.image)
+                    .imageScale(.large)
+                    .foregroundColor(isSelected ? .steam_gold : .primary)
+            }
+            .frame(width: 40)
             Text(item.title)
                 .font(.FjallaOne(size: 24))
-                .color(isSelected ? .steam_gold : .white)
+                .foregroundColor(isSelected ? .steam_gold : .primary)
             }
             .padding()
-            .tapAction {
+            .onTapGesture {
                 self.selectedMenu = self.item
             }
     }

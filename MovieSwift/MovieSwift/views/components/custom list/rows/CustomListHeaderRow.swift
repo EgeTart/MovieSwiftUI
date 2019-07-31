@@ -11,6 +11,7 @@ import SwiftUIFlux
 
 struct CustomListHeaderRow : View {
     @EnvironmentObject var store: Store<AppState>
+    @Binding var sorting: MoviesSort
     
     let listId: Int
     var list: CustomList {
@@ -25,25 +26,27 @@ struct CustomListHeaderRow : View {
     
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            MovieTopBackdropImage(imageLoader: ImageLoader(path: coverBackdropMovie?.backdrop_path ?? coverBackdropMovie?.poster_path,
-                                                           size: .original),
+            MovieTopBackdropImage(imageLoader: ImageLoaderCache.shared.loaderFor(path: coverBackdropMovie?.backdrop_path ?? coverBackdropMovie?.poster_path,
+                                                                                 size: .original),
                                   isExpanded: .constant(false),
                                   height: 200)
             VStack(alignment: .leading, spacing: 8) {
                 Text(list.name)
                     .font(.FjallaOne(size: 40))
-                    .color(.steam_gold)
-                Text("\(list.movies.count) movies")
+                    .foregroundColor(.steam_gold)
+                Text("\(list.movies.count) movies sorted \(sorting.title())")
                     .font(.subheadline)
+                    .foregroundColor(.white)
             }.padding()
-        }.listRowInsets(EdgeInsets())
+        }
+        .listRowInsets(EdgeInsets())
     }
 }
 
 #if DEBUG
 struct CustomListHeaderRow_Previews : PreviewProvider {
     static var previews: some View {
-        CustomListHeaderRow(listId: 0).environmentObject(sampleStore)
+        CustomListHeaderRow(sorting: .constant(.byAddedDate), listId: 0).environmentObject(sampleStore)
     }
 }
 #endif

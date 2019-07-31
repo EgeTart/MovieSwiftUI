@@ -59,7 +59,6 @@ struct DraggableCover : View {
     }
     
     // MARK: - Internal vars
-    @State private var viewState = CGSize.zero
     @State private var predictedEndLocation: CGPoint? = nil
     @State private var hasMoved = false
     @State private var delayedIsActive = false
@@ -69,8 +68,8 @@ struct DraggableCover : View {
     
     // MARK: - Internal consts
     private let minimumLongPressDuration = 0.01
-    private let shadowSize: Length = 4
-    private let shadowRadius: Length = 16
+    private let shadowSize: CGFloat = 4
+    private let shadowRadius: CGFloat = 16
     
     // MARK: - Constructor vars
     let movieId: Int
@@ -88,12 +87,12 @@ struct DraggableCover : View {
     
     private func computedOffset() -> CGSize {
         if let location = predictedEndLocation {
-            return CGSize(width: viewState.width + location.x,
+            return CGSize(width: location.x,
                           height: 0)
         }
         
         return CGSize(
-            width: dragState.isActive ? viewState.width +  dragState.translation.width : 0,
+            width: dragState.isActive ? dragState.translation.width : 0,
             height: 0
         )
     }
@@ -106,11 +105,7 @@ struct DraggableCover : View {
     }
     
     private var coverSpringAnimation: Animation {
-        .fluidSpring(stiffness: 200,
-                     dampingFraction: 0.6,
-                     blendDuration: 0,
-                     timestep: 1.0 / 300,
-                     idleThreshold: 0.5)
+        .interpolatingSpring(mass: 1, stiffness: 150, damping: 15, initialVelocity: 5)
     }
     
     // MARK: - View
@@ -160,8 +155,8 @@ struct DraggableCover : View {
             }
         
         // MARK: - View return
-        return DiscoverCoverImage(imageLoader: ImageLoader(path: movie.poster_path,
-                                                         size: .small))
+        return DiscoverCoverImage(imageLoader: ImageLoaderCache.shared.loaderFor(path: movie.poster_path,
+                                                                                 size: .medium))
             .offset(computedOffset())
             .animation(delayedIsActive ? coverSpringAnimation : nil)
             .opacity(predictedEndLocation != nil ? 0 : 1)

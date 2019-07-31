@@ -11,7 +11,7 @@ import SwiftUIFlux
 
 // MARK:- Shared View
 struct HomeView: View {
-    #if targetEnvironment(UIKitForMac)
+    #if targetEnvironment(macCatalyst)
     var body: some View {
         SplitView()
     }
@@ -27,29 +27,30 @@ struct TabbarView: View {
     @State var selectedTab = Tab.movies
     
     enum Tab: Int {
-        case movies, discover, myLists
+        case movies, discover, fanClub, myLists
     }
     
     func tabbarItem(text: String, image: String) -> some View {
         VStack {
-            Image(image)
+            Image(systemName: image)
+                .imageScale(.large)
             Text(text)
         }
     }
     
     var body: some View {
-        TabbedView(selection: $selectedTab) {
+        TabView(selection: $selectedTab) {
             MoviesHome().tabItem{
-                Image(systemName: "film").imageScale(.large)
-                Text("Movies")
+                self.tabbarItem(text: "Movies", image: "film")
             }.tag(Tab.movies)
             DiscoverView().tabItem{
-                Image(systemName: "square.stack").imageScale(.large)
-                Text("Discover")
+                self.tabbarItem(text: "Discover", image: "square.stack")
             }.tag(Tab.discover)
+            FanClubHome().tabItem{
+                self.tabbarItem(text: "Fan Club", image: "star.circle.fill")
+            }.tag(Tab.fanClub)
             MyLists().tabItem{
-                Image(systemName: "heart.circle").imageScale(.large)
-                Text("My Lists")
+                self.tabbarItem(text: "My Lists", image: "heart.circle")
             }.tag(Tab.myLists)
             }
             .edgesIgnoringSafeArea(.top)
@@ -63,14 +64,23 @@ struct SplitView: View {
     var body: some View {
         HStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading) {
                     ForEach(OutlineMenu.allCases) { menu in
-                        OutlineRow(item: menu, selectedMenu: self.$selectedMenu)
+                        ZStack(alignment: .leading) {
+                            OutlineRow(item: menu, selectedMenu: self.$selectedMenu)
+                                .frame(height: 50)
+                            if menu == self.selectedMenu {
+                                Rectangle()
+                                    .foregroundColor(Color.secondary.opacity(0.1))
+                                    .frame(height: 50)
+                            }
+                        }
                     }
                 }
-                }.background(Color(.sRGB, white: 0.1, opacity: 1))
+                .padding(.top, 32)
                 .frame(width: 250)
-            Spacer().frame(width: 1).foregroundColor(.secondary)
+            }
+            .background(Color.primary.opacity(0.1))
             selectedMenu.contentView
         }
     }

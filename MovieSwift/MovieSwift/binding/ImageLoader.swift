@@ -10,27 +10,30 @@ import SwiftUI
 import UIKit
 import Combine
 
-final class ImageLoader: BindableObject {
-    let didChange = PassthroughSubject<UIImage?, Never>()
+class ImageLoaderCache {
+    static let shared = ImageLoaderCache()
     
+    var loaders: [String: ImageLoader] = [:]
+    
+    func loaderFor(path: String?, size: ImageService.Size) -> ImageLoader {
+        let key = "\(path ?? "missing")#\(size.rawValue)"
+        if let loader = loaders[key] {
+            return loader
+        } else {
+            let loader = ImageLoader(path: path, size: size)
+            loaders[key] = loader
+            return loader
+        }
+    }
+}
+
+final class ImageLoader: ObservableObject {
     let path: String?
     let size: ImageService.Size
     
-    var image: UIImage? = nil {
-        didSet {
-            DispatchQueue.main.async {
-                self.didChange.send(self.image)
-            }
-        }
-    }
+    @Published var image: UIImage? = nil
     
-    var missing: Bool = false {
-        didSet {
-            DispatchQueue.main.async {
-                self.didChange.send(nil)
-            }
-        }
-    }
+    var cancellable: AnyCancellable?
     
     init(path: String?, size: ImageService.Size) {
         self.size = size
@@ -39,11 +42,14 @@ final class ImageLoader: BindableObject {
     
     func loadImage() {
         guard let poster = path else {
-            missing = true
             return
         }
-        ImageService.shared.image(poster: poster, size: .medium) { [weak self] (result) in
-            do { self?.image = try result.get() } catch { }
-        }
+        cancellable = ImageService.shared.fetchImage(poster: poster, size: size)
+            .receive(on: DispatchQueue.main)
+            .assign(to: \ImageLoader.image, on: self)
+    }
+    
+    deinit {
+        cancellable?.cancel()
     }
 }

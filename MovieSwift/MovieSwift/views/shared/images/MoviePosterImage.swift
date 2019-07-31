@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct MoviePosterImage : View {
-    @State var imageLoader: ImageLoader
+    @ObservedObject var imageLoader: ImageLoader
     @State var isImageLoaded = false
     let posterSize: PosterStyle.Size
     
@@ -20,7 +20,7 @@ struct MoviePosterImage : View {
                     .resizable()
                     .renderingMode(.original)
                     .posterStyle(loaded: true, size: posterSize)
-                    .animation(.basic())
+                    .animation(.easeInOut)
                     .onAppear{
                         self.isImageLoaded = true
                 }

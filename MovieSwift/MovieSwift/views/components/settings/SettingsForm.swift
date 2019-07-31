@@ -12,7 +12,7 @@ import Foundation
 struct SettingsForm : View {
     @State var selectedRegion: Int = 0
     @State var alwaysOriginalTitle: Bool = false
-    @Environment(\.isPresented) var isPresented
+    @Environment(\.presentationMode) var presentationMode
     
     var countries: [String] {
         get {
@@ -30,7 +30,7 @@ struct SettingsForm : View {
         HStack {
             Text(title)
             Spacer()
-            Text(info).font(.body).color(.secondary)
+            Text(info).font(.body).foregroundColor(.secondary)
         }
     }
     
@@ -55,12 +55,10 @@ struct SettingsForm : View {
                     Text("Export my data")
                     Text("Backup to iCloud")
                     Text("Restore from iCloud")
-                    Text("Reset application data").color(.red)
+                    Text("Reset application data").foregroundColor(.red)
                 })
                 
                 Section(header: Text("Debug info")) {
-                    debugInfoView(title: "Image in memory cache",
-                                  info: "\(ImageService.shared.memCache.count)")
                     debugInfoView(title: "Movies in state",
                                   info: "\(store.state.moviesState.movies.count)")
                     debugInfoView(title: "Archived state size",
@@ -73,16 +71,17 @@ struct SettingsForm : View {
                         self.selectedRegion = index
                     }
                     self.alwaysOriginalTitle = AppUserDefaults.alwaysOriginalTitle
-            }.navigationBarItems(
+            }
+            .navigationBarItems(
                 leading: Button(action: {
-                    self.isPresented?.value = false
+                    self.presentationMode.value.dismiss()
                 }, label: {
-                    Text("Cancel").color(.red)
+                    Text("Cancel").foregroundColor(.red)
                 }),
                 trailing: Button(action: {
                     AppUserDefaults.region = NSLocale.isoCountryCodes[self.selectedRegion]
                     AppUserDefaults.alwaysOriginalTitle = self.alwaysOriginalTitle
-                    self.isPresented?.value = false
+                    self.presentationMode.value.dismiss()
                 }, label: {
                     Text("Save")
                 }))

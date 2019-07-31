@@ -9,19 +9,19 @@
 import SwiftUI
 
 struct MovieTopBackdropImage : View {
-    @State var imageLoader: ImageLoader
+    @ObservedObject var imageLoader: ImageLoader
     @State var isImageLoaded = false
     
     @Binding var isExpanded: Bool
     
     var forceBlur: Bool = false
     var fill: Bool = false
-    var height: Length = 300
+    var height: CGFloat = 300
     
     private let threeshold: CGFloat = 50
     private let maxBlur: CGFloat = 100
     
-    func blurFor(minY: CGFloat) -> Length {
+    func blurFor(minY: CGFloat) -> CGFloat {
         if isExpanded {
             return 0
         }
@@ -41,22 +41,20 @@ struct MovieTopBackdropImage : View {
                         Image(uiImage: self.imageLoader.image!)
                             .resizable()
                             .blur(radius: self.forceBlur ? 50 : self.blurFor(minY: geometry.frame(in: .global).minY),
-                                  opaque: self.fill ? false : true)
+                                  opaque: false)
                             .opacity(self.isImageLoaded ? 1 : 0)
-                            .animation(.basic())
+                            .animation(.easeInOut)
                             .onAppear{
                                 self.isImageLoaded = true
-                            }.tapAction {
+                            }.onTapGesture {
                                 self.isExpanded.toggle()
                             }
                     }
                     }
                     .frame(maxHeight: fill ? 50 : height)
-                    .aspectRatio(500/300, contentMode: fill || !isExpanded ? .fill : .fit)
             } else {
                 Rectangle()
                     .frame(maxHeight: fill ? 50 : height)
-                    .aspectRatio(500/300, contentMode: fill || !isExpanded ? .fill : .fit)
                     .foregroundColor(.gray)
                     .opacity(0.1)
             }

@@ -20,12 +20,12 @@ struct DiscoverPosterStyle: ViewModifier {
 
 extension View {
     func discoverPosterStyle() -> some View {
-        return Modified(content: self, modifier: DiscoverPosterStyle())
+        return ModifiedContent(content: self, modifier: DiscoverPosterStyle())
     }
 }
 
 struct DiscoverCoverImage : View {
-    @State var imageLoader: ImageLoader
+    @ObservedObject var imageLoader: ImageLoader
     
     var cachedImage: UIImage? {
         if let poster = imageLoader.path {
@@ -40,10 +40,6 @@ struct DiscoverCoverImage : View {
                 Image(uiImage: cachedImage ?? self.imageLoader.image!)
                     .resizable()
                     .renderingMode(.original)
-                    .discoverPosterStyle()
-            } else if imageLoader.missing == true {
-                Rectangle()
-                    .foregroundColor(.gray)
                     .discoverPosterStyle()
             } else {
                 Rectangle()

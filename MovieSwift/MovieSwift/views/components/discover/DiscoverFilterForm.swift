@@ -11,7 +11,7 @@ import SwiftUIFlux
 
 struct DiscoverFilterForm : View {
     @EnvironmentObject private var store: Store<AppState>
-    @Binding var isPresented: Bool
+    @Environment(\.presentationMode) var presentationMode
     
     let datesText = ["Random",
                      "1950-1960",
@@ -78,87 +78,103 @@ struct DiscoverFilterForm : View {
         }
     }
     
+    private var settingsSection: some View {
+        Section(header: Text("Filter settings"), content: {
+            Picker(selection: $selectedDate,
+                   label: Text("Era"),
+                   content: {
+                    ForEach(0 ..< self.datesText.count) {
+                        Text(self.datesText[$0]).tag($0)
+                    }
+            })
+            
+            if self.genres != nil {
+                Picker(selection: $selectedGenre,
+                       label: Text("Genre"),
+                       content: {
+                        ForEach(0 ..< self.genres!.count) {
+                            Text(self.genres![$0].name).tag($0)
+                        }
+                })
+            }
+            
+            Picker(selection: $selectedCountry,
+                   label: Text("Country"),
+                   content: {
+                    ForEach(0 ..< self.countries.count) {
+                        Text(self.countries[$0]).tag($0)
+                    }
+            })
+        })
+    }
+    
+    private var buttonsSection: some View {
+        Group {
+            Section {
+                Button(action: {
+                    self.presentationMode.value.dismiss()
+                    if let toSave = self.formFilter {
+                        self.store.dispatch(action: MoviesActions.SaveDiscoverFilter(filter: toSave))
+                    }
+                    let filter = self.formFilter ?? DiscoverFilter.randomFilter()
+                    self.store.dispatch(action: MoviesActions.ResetRandomDiscover())
+                    self.store.dispatch(action: MoviesActions.FetchRandomDiscover(filter: filter))
+                }, label: {
+                    Text("Save and filter movies").foregroundColor(.green)
+                })
+                
+                Button(action: {
+                    self.presentationMode.value.dismiss()
+                }, label: {
+                    Text("Cancel").foregroundColor(.red)
+                })
+            }
+            
+            Section {
+                Button(action: {
+                    self.selectedCountry = 0
+                    self.selectedDate = 0
+                    self.selectedGenre = 0
+                    self.presentationMode.value.dismiss()
+                    self.store.dispatch(action: MoviesActions.ResetRandomDiscover())
+                    self.store.dispatch(action: MoviesActions.FetchRandomDiscover())
+                }, label: {
+                    Text("Reset random").foregroundColor(.blue)
+                })
+            }
+        }
+    }
+    
+    private var savedFiltersSection: some View {
+        Group {
+            if !savedFilters.isEmpty {
+                Section(header: Text("Saved filters"), content: {
+                    ForEach(0 ..< self.savedFilters.count) { index in
+                        Text(self.savedFilters[index].toText(state: self.store.state))
+                            .onTapGesture {
+                                self.presentationMode.value.dismiss()
+                                self.store.dispatch(action: MoviesActions.ResetRandomDiscover())
+                                self.store.dispatch(action: MoviesActions.FetchRandomDiscover(filter: self.savedFilters[index]))
+                        }
+                    }
+                    Text("Delete saved filters")
+                        .foregroundColor(.red)
+                        .onTapGesture {
+                            self.store.dispatch(action: MoviesActions.ClearSavedDiscoverFilters())
+                    }
+                })
+            }
+        }
+    }
+    
     var body: some View {
         return NavigationView {
             Form {
-                Section(header: Text("Filter settings"), content: {
-                    Picker(selection: $selectedDate,
-                           label: Text("Era"),
-                           content: {
-                            ForEach(0 ..< self.datesText.count) {
-                                Text(self.datesText[$0]).tag($0)
-                            }
-                    })
-                    
-                    if self.genres != nil {
-                        Picker(selection: $selectedGenre,
-                               label: Text("Genre"),
-                               content: {
-                                ForEach(0 ..< self.genres!.count) {
-                                    Text(self.genres![$0].name).tag($0)
-                                }
-                        })
-                    }
-                    
-                    Picker(selection: $selectedCountry,
-                           label: Text("Country"),
-                           content: {
-                            ForEach(0 ..< self.countries.count) {
-                                Text(self.countries[$0]).tag($0)
-                            }
-                    })
-                })
-                
-                Section {
-                    Button(action: {
-                        self.isPresented = false
-                        if let toSave = self.formFilter {
-                            self.store.dispatch(action: MoviesActions.SaveDiscoverFilter(filter: toSave))
-                        }
-                        let filter = self.formFilter ?? DiscoverFilter.randomFilter()
-                        self.store.dispatch(action: MoviesActions.ResetRandomDiscover())
-                        self.store.dispatch(action: MoviesActions.FetchRandomDiscover(filter: filter))
-                    }, label: {
-                        Text("Save and filter movies").color(.green)
-                    })
-                    
-                    Button(action: {
-                        self.isPresented = false
-                    }, label: {
-                        Text("Cancel").color(.red)
-                    })
-                }
-                
-                Section {
-                    Button(action: {
-                        self.selectedCountry = 0
-                        self.selectedDate = 0
-                        self.selectedGenre = 0
-                        self.isPresented = false
-                        self.store.dispatch(action: MoviesActions.ResetRandomDiscover())
-                        self.store.dispatch(action: MoviesActions.FetchRandomDiscover())
-                    }, label: {
-                        Text("Reset random").color(.blue)
-                    })
-                }
-                if !savedFilters.isEmpty {
-                    Section(header: Text("Saved filters"), content: {
-                        ForEach(0 ..< self.savedFilters.count) { index in
-                            Text(self.savedFilters[index].toText(state: self.store.state))
-                                .tapAction {
-                                    self.isPresented = false
-                                    self.store.dispatch(action: MoviesActions.ResetRandomDiscover())
-                                    self.store.dispatch(action: MoviesActions.FetchRandomDiscover(filter: self.savedFilters[index]))
-                            }
-                        }
-                        Text("Delete saved filters")
-                            .color(.red)
-                            .tapAction {
-                                self.store.dispatch(action: MoviesActions.ClearSavedDiscoverFilters())
-                        }
-                    })
-                }
-                }
+                settingsSection
+                buttonsSection
+                savedFiltersSection
+            }
+            .navigationViewStyle(StackNavigationViewStyle())
                 .navigationBarTitle(Text("Discover filter"))
                 .onAppear {
                     if let startYear = self.currentFilter?.startYear {
@@ -180,7 +196,7 @@ struct DiscoverFilterForm : View {
 #if DEBUG
 struct DiscoverFilterForm_Previews : PreviewProvider {
     static var previews: some View {
-        DiscoverFilterForm(isPresented: .constant(false)).environmentObject(store)
+        DiscoverFilterForm().environmentObject(store)
     }
 }
 #endif

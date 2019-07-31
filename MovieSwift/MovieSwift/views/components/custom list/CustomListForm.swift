@@ -10,7 +10,6 @@ import SwiftUI
 import SwiftUIFlux
 
 final class CustomListFormSearchWrapper: SearchTextWrapper {
-
     override func onUpdateTextDebounced(text: String) {
         if !text.isEmpty {
             store.dispatch(action: MoviesActions.FetchSearch(query: text, page: 1))
@@ -20,17 +19,17 @@ final class CustomListFormSearchWrapper: SearchTextWrapper {
 
 struct CustomListForm : View {
     @EnvironmentObject var store: Store<AppState>
-    @Environment(\.isPresented) private var isPresented
+    @Environment(\.presentationMode) var presentationMode
     
     @State private var searchTextWrapper = CustomListFormSearchWrapper()
+    @State private var isSearching = false
     @State var listName: String = ""
     @State var listMovieCover: Int?
     
     let editingListId: Int?
-    let shouldDismiss: (() -> Void)?
     
     private var searchedMovies: [Int] {
-        return store.state.moviesState.search[searchTextWrapper.searchText]?.prefix(2).map{ $0 } ?? []
+        return store.state.moviesState.search[searchTextWrapper.searchText]?.map{ $0 } ?? []
     }
     
     private var topSection: some View {
@@ -40,30 +39,45 @@ struct CustomListForm : View {
                         Text("Name:")
                         TextField("Name your list", text: $listName)
                     }
-                    if listMovieCover == nil {
-                        SearchField(searchTextWrapper: searchTextWrapper,
-                                    placeholder: "Search and add a movie as your cover")
-                            .disabled(listMovieCover != nil)
-                    }
-                    if listMovieCover != nil {
-                        CustomListCoverRow(movieId: listMovieCover!)
-                        Button(action: {
-                            self.listMovieCover = nil
-                        }, label: {
-                            Text("Remove cover").color(.red)
-                        })
-                    }
         })
+    }
+    
+    private var coverSection: some View {
+        Section(header: Text("List cover")) {
+            if listMovieCover == nil {
+                SearchField(searchTextWrapper: searchTextWrapper,
+                            placeholder: "Search and add a movie as your cover",
+                            isSearching: $isSearching)
+            }
+            if listMovieCover != nil {
+                CustomListCoverRow(movieId: listMovieCover!)
+                Button(action: {
+                    self.listMovieCover = nil
+                }, label: {
+                    Text("Remove cover").foregroundColor(.red)
+                })
+            }
+            
+            if !searchTextWrapper.searchText.isEmpty {
+                movieSearchSection
+            }
+        }
     }
     
     private var movieSearchSection: some View {
         Section() {
-            ForEach(searchedMovies) { movieId in
-                CustomListCoverRow(movieId: movieId).tapAction {
-                    self.listMovieCover = movieId
-                    self.searchTextWrapper.searchText = ""
-                }
+            ScrollView(.horizontal) {
+                HStack(spacing: 16) {
+                    ForEach(searchedMovies, id: \.self) { movieId in
+                        CustomListCoverRow(movieId: movieId).onTapGesture {
+                            self.listMovieCover = movieId
+                            self.searchTextWrapper.searchText = ""
+                        }
+                    }
+                }.padding(.leading, 16)
             }
+            .frame(height: 200)
+            .listRowInsets(EdgeInsets())
         }
     }
     
@@ -81,17 +95,15 @@ struct CustomListForm : View {
                 } else {
                     self.store.dispatch(action: MoviesActions.AddCustomList(list: newList))
                 }
-                self.isPresented?.value = false
-                self.shouldDismiss?()
+                self.presentationMode.value.dismiss()
                 
             }, label: {
-                Text(self.editingListId != nil ? "Save changes" : "Create").color(.blue)
+                Text(self.editingListId != nil ? "Save changes" : "Create").foregroundColor(.blue)
             })
             Button(action: {
-                self.isPresented?.value = false
-                self.shouldDismiss?()
+                self.presentationMode.value.dismiss()
             }, label: {
-                Text("Cancel").color(.red)
+                Text("Cancel").foregroundColor(.red)
             })
         }
     }
@@ -100,11 +112,13 @@ struct CustomListForm : View {
         NavigationView {
             Form {
                 topSection
-                movieSearchSection
+                coverSection
                 buttonsSection
             }
             .navigationBarTitle(Text("New list"))
-        }.onAppear() {
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .onAppear() {
             if let id = self.editingListId,
                 let list = self.store.state.moviesState.customLists[id] {
                 self.listMovieCover = list.cover
@@ -117,9 +131,7 @@ struct CustomListForm : View {
 #if DEBUG
 struct CustomListForm_Previews : PreviewProvider {
     static var previews: some View {
-        CustomListForm(editingListId: nil, shouldDismiss: {
-            
-        }).environmentObject(sampleStore)
+        CustomListForm(editingListId: nil).environmentObject(sampleStore)
     }
 }
 #endif

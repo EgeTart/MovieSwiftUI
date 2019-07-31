@@ -13,7 +13,7 @@ struct MovieBackdropImage : View {
         case background, normal
     }
     
-    @State var imageLoader: ImageLoader
+    @ObservedObject var imageLoader: ImageLoader
     @State var isImageLoaded = false
     @State var displayMode: DisplayMode = .normal
     
@@ -24,9 +24,11 @@ struct MovieBackdropImage : View {
                     .resizable()
                     .renderingMode(.original)
                     .frame(width: 300, height: displayMode == .normal ? 168 : 50)
-                    .animation(.basic())
+                    .animation(.easeInOut)
                     .onAppear{
-                        self.isImageLoaded = true
+                        DispatchQueue.main.async {
+                            self.isImageLoaded = true
+                        }
                 }
             } else {
                 Rectangle()

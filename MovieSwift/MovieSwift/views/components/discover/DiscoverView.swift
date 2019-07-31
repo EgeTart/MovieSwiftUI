@@ -17,15 +17,15 @@ struct DiscoverView : View {
     
     @State private var draggedViewState = DraggableCover.DragState.inactive
     @State private var previousMovie: Int? = nil
-    @State private var filterFormPresented = false
-    @State private var movieDetailPresented = false
+    @State private var presentedMovie: Movie? = nil
+    @State private var isFilterFormPresented = false
     @State private var willEndPosition: CGSize? = nil
     private let hapticFeedback = UIImpactFeedbackGenerator(style: .soft)
     
-    #if targetEnvironment(UIKitForMac)
-    private let bottomSafeInsetFix: Length = 50
+    #if targetEnvironment(macCatalyst)
+    private let bottomSafeInsetFix: CGFloat = 100
     #else
-    private let bottomSafeInsetFix: Length = 20
+    private let bottomSafeInsetFix: CGFloat = 20
     #endif
     
     // MARK: - Computed properties
@@ -42,7 +42,7 @@ struct DiscoverView : View {
         guard !movies.isEmpty else {
             return nil
         }
-        return store.state.moviesState.movies[movies.reversed()[0].id]
+        return store.state.moviesState.movies[movies.reversed()[0]]
     }
     
     private func scaleResistance() -> Double {
@@ -68,10 +68,10 @@ struct DiscoverView : View {
         if handler == .left || handler == .right {
             previousMovie = currentMovie.id
             if handler == .left {
-                hapticFeedback.impactOccurred(withIntensity: 0.8)
+                hapticFeedback.impactOccurred(intensity: 0.8)
                 store.dispatch(action: MoviesActions.AddToWishlist(movie: currentMovie.id))
             } else if handler == .right {
-                hapticFeedback.impactOccurred(withIntensity: 0.8)
+                hapticFeedback.impactOccurred(intensity: 0.8)
                 store.dispatch(action: MoviesActions.AddToSeenList(movie: currentMovie.id))
             }
             store.dispatch(action: MoviesActions.PopRandromDiscover())
@@ -86,38 +86,13 @@ struct DiscoverView : View {
         }
     }
     
-    // MARK: - Modals
-    
-    private var filterFormModal: Modal {
-        Modal(DiscoverFilterForm(isPresented: $filterFormPresented).environmentObject(store),
-              onDismiss: {
-            self.filterFormPresented = false
-        })
-    }
-    
-    private var movieDetailModal: Modal {
-        let content = NavigationView{ MovieDetail(movieId: currentMovie!.id).environmentObject(store) }
-        return Modal(content) {
-            self.movieDetailPresented = false
-        }
-    }
-    
-    private var currentModal: Modal? {
-        if filterFormPresented {
-            return filterFormModal
-        } else if movieDetailPresented {
-            return movieDetailModal
-        }
-        return nil
-    }
-    
     // MARK: Body views
     private var filterView: some View {
         return BorderedButton(text: filter?.toText(state: store.state) ?? "Loading...",
                               systemImageName: "line.horizontal.3.decrease",
                               color: .steam_blue,
                               isOn: false) {
-                                self.filterFormPresented = true
+                                self.isFilterFormPresented = true
         }
     }
     
@@ -125,13 +100,13 @@ struct DiscoverView : View {
         ZStack(alignment: .center) {
             if self.currentMovie != nil {
                 Text(self.currentMovie!.userTitle)
-                    .color(.primary)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                     .font(.FjallaOne(size: 18))
                     .lineLimit(2)
                     .opacity(self.draggedViewState.isDragging ? 0.0 : 1.0)
                     .offset(x: 0, y: -15)
-                    .animation(.basic())
+                    .animation(.easeInOut)
                 
                 Circle()
                     .strokeBorder(Color.pink, lineWidth: 1)
@@ -139,7 +114,7 @@ struct DiscoverView : View {
                     .frame(width: 50, height: 50)
                     .offset(x: -70, y: 0)
                     .opacity(self.draggedViewState.isDragging ? 0.3 + Double(self.leftZoneResistance()) : 0)
-                    .animation(.fluidSpring())
+                    .animation(.spring())
                 
                 Circle()
                     .strokeBorder(Color.green, lineWidth: 1)
@@ -147,7 +122,7 @@ struct DiscoverView : View {
                     .frame(width: 50, height: 50)
                     .offset(x: 70, y: 0)
                     .opacity(self.draggedViewState.isDragging ? 0.3 + Double(self.rightZoneResistance()) : 0)
-                    .animation(.fluidSpring())
+                    .animation(.spring())
                 
                 
                 Circle()
@@ -156,9 +131,9 @@ struct DiscoverView : View {
                     .frame(width: 50, height: 50)
                     .offset(x: 0, y: 30)
                     .opacity(self.draggedViewState.isDragging ? 0.0 : 1)
-                    .animation(.fluidSpring())
-                    .tapAction {
-                        self.hapticFeedback.impactOccurred(withIntensity: 0.5)
+                    .animation(.spring())
+                    .onTapGesture {
+                        self.hapticFeedback.impactOccurred(intensity: 0.5)
                         self.previousMovie = self.currentMovie!.id
                         self.store.dispatch(action: MoviesActions.PopRandromDiscover())
                         self.fetchRandomMovies(force: false, filter: self.filter)
@@ -172,7 +147,7 @@ struct DiscoverView : View {
                 }) .frame(width: 50, height: 50)
                     .offset(x: -60, y: 30)
                     .opacity(self.previousMovie != nil && !self.draggedViewState.isActive ? 1 : 0)
-                    .animation(.fluidSpring())
+                    .animation(.spring())
                 
                 Button(action: {
                     self.store.dispatch(action: MoviesActions.ResetRandomDiscover())
@@ -184,24 +159,19 @@ struct DiscoverView : View {
                     .frame(width: 50, height: 50)
                     .offset(x: 60, y: 30)
                     .opacity(self.draggedViewState.isDragging ? 0.0 : 1.0)
-                    .animation(.fluidSpring())
+                    .animation(.spring())
             }
         }
     }
     
-    var body: some View {
-        ZStack(alignment: .center) {
-            GeometryReader { reader in
-                    self.filterView
-                        .position(x: reader.frame(in: .local).midX, y: 30)
-                        .frame(height: 50)
-            }
-            ForEach(movies) {id in
+    private var draggableMovies: some View {
+        ForEach(movies, id: \.self) { id in
+            Group {
                 if self.movies.reversed().firstIndex(of: id) == 0 {
                     DraggableCover(movieId: id,
                                    gestureViewState: self.$draggedViewState,
                                    onTapGesture: {
-                                    self.movieDetailPresented = true
+                                    self.presentedMovie = self.currentMovie
                     },
                                    willEndGesture: { position in
                                     self.willEndPosition = position
@@ -209,24 +179,42 @@ struct DiscoverView : View {
                                    endGestureHandler: { handler in
                                     self.draggableCoverEndGestureHandler(handler: handler)
                     })
+                        .sheet(item: self.$presentedMovie, onDismiss: {
+                            self.presentedMovie = nil
+                        }, content: { movie in
+                            NavigationView {
+                                MovieDetail(movieId: movie.id)
+                            }.navigationViewStyle(StackNavigationViewStyle())
+                                .environmentObject(self.store)
+                        })
                 } else {
-                    DiscoverCoverImage(imageLoader: ImageLoader(path: self.store.state.moviesState.movies[id]!.poster_path,
-                                                                size: .small))
-                        .scaleEffect(1.0 - Length(self.movies.reversed().firstIndex(of: id)!) * 0.03 + Length(self.scaleResistance()))
-                        .padding(.bottom, Length(self.movies.reversed().firstIndex(of: id)! * 16) - self.dragResistance())
-                        .animation(.spring())
+                    DiscoverCoverImage(imageLoader: ImageLoaderCache.shared.loaderFor(path: self.store.state.moviesState.movies[id]!.poster_path,
+                                                                                      size: .medium))
+                        .scaleEffect(1.0 - CGFloat(self.movies.reversed().firstIndex(of: id)!) * 0.03 + CGFloat(self.scaleResistance()))
+                        .padding(.bottom, CGFloat(self.movies.reversed().firstIndex(of: id)! * 16) - self.dragResistance())
+                        .animation(.spring(response: 0.5, dampingFraction: 0.5, blendDuration: 0))
                 }
             }
+        }
+    }
+    
+    var body: some View {
+        ZStack(alignment: .center) {
+            draggableMovies
             GeometryReader { reader in
+                self.filterView
+                    .position(x: reader.frame(in: .local).midX,
+                              y: reader.frame(in: .local).minY + reader.safeAreaInsets.top + 10)
+                    .frame(height: 50)
+                    .sheet(isPresented: self.$isFilterFormPresented, content: { DiscoverFilterForm().environmentObject(self.store) })
                 self.actionsButtons
                     .position(x: reader.frame(in: .local).midX,
                               y: reader.frame(in: .local).maxY - reader.safeAreaInsets.bottom - self.bottomSafeInsetFix)
             }
-            }
-            .presentation(currentModal)
-            .onAppear {
-                self.hapticFeedback.prepare()
-                self.fetchRandomMovies(force: false, filter: self.filter)
+        }
+        .onAppear {
+            self.hapticFeedback.prepare()
+            self.fetchRandomMovies(force: false, filter: self.filter)
         }
     }
 }

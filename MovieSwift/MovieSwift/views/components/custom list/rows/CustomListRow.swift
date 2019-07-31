@@ -22,11 +22,11 @@ struct CustomListRow : View {
     
     var body: some View {
         HStack {
-            SmallMoviePosterImage(imageLoader: ImageLoader(path: coverMovie?.poster_path,
-                                                           size: .small))
+            SmallMoviePosterImage(imageLoader: ImageLoaderCache.shared.loaderFor(path: coverMovie?.poster_path,
+                                                                                 size: .medium))
             VStack(alignment: .leading, spacing: 2) {
                 Text(list.name).font(.headline).fontWeight(.bold)
-                Text("\(list.movies.count) movies").font(.subheadline).color(.secondary)
+                Text("\(list.movies.count) movies").font(.subheadline).foregroundColor(.secondary)
             }
             }.listRowInsets(EdgeInsets())
             .frame(height: 50)
@@ -34,7 +34,7 @@ struct CustomListRow : View {
 }
 
 struct SmallMoviePosterImage : View {
-    @State var imageLoader: ImageLoader
+    @ObservedObject var imageLoader: ImageLoader
     @State var isImageLoaded = false
     
     var body: some View {
@@ -47,7 +47,7 @@ struct SmallMoviePosterImage : View {
                     .cornerRadius(3)
                     .opacity(isImageLoaded ? 1 : 0.1)
                     .shadow(radius: 2)
-                    .animation(.basic())
+                    .animation(.easeInOut)
                     .onAppear{
                         self.isImageLoaded = true
                 }
